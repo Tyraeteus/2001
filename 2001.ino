@@ -12,15 +12,14 @@ Messages msg;
 unsigned long timeForHeartbeat;
 
 //analog pins
-const int armPotPin = 0;
+const int armPotPin = 7;
 
 //digital pins
-const int armFow = 0;
-const int armRev = 0;
-const int leftDriveFow = 0;
-const int leftDriveRev = 0;
-const int rightDriveFow = 0;
-const int rightDriveRev = 0;
+const int armPin = 4;
+const int leftDriveFow = 9;
+const int leftDriveRev = 8;
+const int rightDriveFow = 6;
+const int rightDriveRev = 7;
 const int leftEncPinA = 0;
 const int leftEncPinB = 0;
 const int rightEncPinA = 0;
@@ -28,8 +27,9 @@ const int rightEncPinB = 0;
 const int tubeSwitchPin = 0;
 
 //Servo
-int gripperPin = 0;
+int gripperPin = 5;
 Servo gripper;
+Servo arm;
 
 //Encoders
 Encoder leftEnc(leftEncPinA, leftEncPinB);
@@ -41,11 +41,12 @@ L3G gyro;
 
 //Line Sensor
 const int numSensors = 6;
+const int emitterPin = 35;
 unsigned int lineSensorReading[numSensors + 1];
 unsigned int linePosition;
 unsigned int threshold = 0;
-const unsigned char lineSensorPins[numSensors] = {0, 1, 2, 3, 4, 5};
-QTRSensorsRC lineSensor(lineSensorPins, numSensors);
+const unsigned char lineSensorPins[numSensors] = {23, 25, 27, 29, 30, 33};
+QTRSensorsRC lineSensor(lineSensorPins, numSensors, 2500, emitterPin);
 
 //Line follwoing PID controller
 double kPLine;
@@ -89,9 +90,9 @@ bool wasAtInt = false;
 bool isLowRadiation = false;
 bool isHighRadiation = false;
 unsigned int armTargetPos = 0;
-const unsigned int armUp = 0;
-const unsigned int armHorizGrab = 0;
-const unsigned int armDown = 0;
+const unsigned int armUp = 580;
+const unsigned int armHorizGrab = 345;
+const unsigned int armDown = 30;
 const unsigned int gripperOpen = 0;
 const unsigned int gripperClosed = 0;
 
@@ -129,6 +130,7 @@ void setup() {
   msg.setup();
   timeForHeartbeat = millis() + 1000;
   gripper.attach(gripperPin, 1000, 2000);
+  arm.attach(armPin, 1000, 2000);
   robotState = STOPPED;
   operationState = CALIBRATING_LINE_SENSOR;
 
