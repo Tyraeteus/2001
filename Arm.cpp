@@ -4,18 +4,18 @@ Arm::Arm(){
   
 }
 
-void moveArmToPos(int position) {
+void Arm::moveArmToPos(int position) {
   armSetpoint = position;
   armInput = getArmPos();
   armPID.Compute();
   moveArm(armOutput);
 }
 
-unsigned int getArmPos() {
+unsigned int Arm::getArmPos() {
   return analogRead(armPotPin);
 }
 
-void moveArm(double speed) {
+void Arm::moveArm(double speed) {
  int dutyCycle = abs(speed) * 255;
   if(speed > 0) {
     analogWrite(armFow, dutyCycle);
@@ -27,11 +27,11 @@ void moveArm(double speed) {
 }
 
 
-void openGripper() {
+void Arm::openGripper() {
   gripper.write(gripperOpen);
 }
 
-void closeGripper() {
+void Arm::closeGripper() {
   gripper.write(gripperClosed);
 }
 
