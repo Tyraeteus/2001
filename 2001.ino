@@ -15,7 +15,7 @@ unsigned long timeForHeartbeat;
 const int armPotPin = 7;
 
 //digital pins
-const int armPin = 4;
+const int armPin = 5;
 const int leftDriveFow = 9;
 const int leftDriveRev = 8;
 const int rightDriveFow = 6;
@@ -27,7 +27,7 @@ const int rightEncPinB = 0;
 const int tubeSwitchPin = 0;
 
 //Servo
-int gripperPin = 5;
+int gripperPin = 10;
 Servo gripper;
 Servo arm;
 
@@ -42,8 +42,7 @@ L3G gyro;
 //Line Sensor
 const int numSensors = 6;
 const int emitterPin = 35;
-unsigned int lineSensorReading[numSensors + 1];
-unsigned int linePosition;
+unsigned int lineSensorReading[numSensors];
 unsigned int threshold = 0;
 const unsigned char lineSensorPins[numSensors] = {23, 25, 27, 29, 30, 33};
 QTRSensorsRC lineSensor(lineSensorPins, numSensors, 2500, emitterPin);
@@ -67,9 +66,9 @@ double angleOutput;
 PID anglePID(&angleInput, &angleOutput, &angleSetpoint, kPAngle, kIAngle, kDAngle, DIRECT);
 
 //Arm PID controller
-double kPArm;
-double kIArm;
-double kDArm;
+double kPArm = 1;
+double kIArm = .01;
+double kDArm = .05;
 double armSetpoint;
 double armInput;
 double armOutput;
@@ -92,7 +91,8 @@ bool isHighRadiation = false;
 unsigned int armTargetPos = 0;
 const unsigned int armUp = 580;
 const unsigned int armHorizGrab = 345;
-const unsigned int armDown = 30;
+const unsigned int armDown = 80;
+const unsigned int armMidGrab = 400;
 const unsigned int gripperOpen = 0;
 const unsigned int gripperClosed = 0;
 
@@ -103,8 +103,9 @@ enum robotState {
   TURNING_LEFT_90,
   TURNING_RIGHT_90,
   TURNING_180,
-  RAISING_GRIPPER,
-  LOWERING_GRIPPER,
+  GRIPPER_TO_TOP,
+  GRIPPER_TO_BOTTOM,
+  GRIPPER_TO_MIDPOINT,
   OPENING_GRIPPER,
   CLOSING_GRIPPER,
   STOPPED
@@ -128,7 +129,12 @@ void setup() {
   Wire.begin();
   gyro.enableDefault();
   msg.setup();
+  linePID.SetOutputLimits(-255, 255);
   timeForHeartbeat = millis() + 1000;
+  pinMode(leftDriveFow, OUTPUT);
+  pinMode(leftDriveRev, OUTPUT);
+  pinMode(rightDriveFow, OUTPUT);
+  pinMode(rightDriveRev, OUTPUT);
   gripper.attach(gripperPin, 1000, 2000);
   arm.attach(armPin, 1000, 2000);
   robotState = STOPPED;
@@ -183,12 +189,14 @@ void loop() {
     case TURNING_180:
       turn(180, globalSpeed);
       break;
-    case RAISING_GRIPPER:
-      moveArm(armTargetPos);
+    case GRIPPER_TO_TOP:
+      moveArm(armUp);
       break;
-    case LOWERING_GRIPPER:
-      moveArm(armTargetPos);
+    case GRIPPER_TO_BOTTOM:
+      moveArm(armDown);
       break;
+    case GRIPPER_TO_MIDPOINT:
+      moveArm(armMidGrab);
     case OPENING_GRIPPER:
       openGripper();
       break;
@@ -210,12 +218,11 @@ void sendHeartbeat() {
 }
 
 void readLineSensor() {
-  linePosition = lineSensor.readLine(lineSensorReading);
+  linePosition = lineSensor.read(lineSensorReading);
 }
 
-double getLinePosition() {
-  readLineSensor();
-  return lineSensorReading[6];
+unsigned int getLinePosition() {
+  return lineSensor.readLine(lineSensorReading);
 }
 
 void sendStatus() {
@@ -262,7 +269,8 @@ void lineFollow(double speed) {
   lineSetpoint = 2500;
   lineInput = getLinePosition();
   linePID.Compute();
-  drive(speed, lineOutput);
+  double turnValue = lineOutput / 255;
+  drive(speed, turnValue);
 }
 
 boolean isAtIntersection() {
@@ -284,6 +292,7 @@ void turn(double degrees, double speed) {
   angleSetpoint = degrees;
   angleInput = readAngle();
   anglePID.Compute();
+  turnValue = 
   drive(speed, angleOutput);  
 }
 
