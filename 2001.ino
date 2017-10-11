@@ -152,6 +152,9 @@ void setup() {
   linePID.SetOutputLimits(-255, 255);
   distPID.SetOutputLimits(-255, 255);
   armPID.SetOutputLimits(-255, 255);
+  armPID.SetMode(AUTOMATIC);
+  distPID.SetMode(AUTOMATIC);
+  linePID.SetMode(AUTOMATIC);
   timeForHeartbeat = millis() + 1000;
   pinMode(leftDriveFow, OUTPUT);
   pinMode(leftDriveRev, OUTPUT);
@@ -232,19 +235,19 @@ void loop() {
       turnToLine(globalSpeed, -1);
       break;
     case GRIPPER_TO_TOP:
-      moveArm(armUp);
+      moveArmToPos(armUp);
       if(getArmPos() == armUp) {
         gripperInPosition = true;
       }
       break;
     case GRIPPER_TO_BOTTOM:
-      moveArm(armDown);
-      if(getArmPos() == armDown) {
+      moveArmToPos(armDown);
+      if(getArmPos() < armDown+20) {
         gripperInPosition = true;
       }
       break;
     case GRIPPER_TO_MIDPOINT:
-      moveArm(armMidGrab);
+      moveArmToPos(armMidGrab);
       if(getArmPos() == armMidGrab) {
         gripperInPosition = true;
       }
@@ -260,11 +263,11 @@ void loop() {
     case CALIBRATING_LINE_SENSOR:
       if(isFirstIteration) {
         calibrationCount = 0;
-        openGripper();
-        moveArm(armUp);
         digitalWrite(13, HIGH);
       }
       lineSensor.calibrate();
+      openGripper();
+      moveArm(armUp);
       calibrationCount++;
       if(calibrationCount >= 400) {
         operationState = DRIVING_TO_REACTOR;
@@ -341,6 +344,11 @@ void loop() {
       }
       if(!gripperInPosition) {
         robotState = GRIPPER_TO_BOTTOM;
+        Serial.println(gripperInPosition);
+        if(getArmPos() < armDown + 20 && getArmPos() > armDown - 20) {
+          gripperInPosition = true;
+          stopArm();
+        }
       } else {
         gripperInPosition = true;
         if(!hasRod) {
@@ -371,7 +379,8 @@ void loop() {
       } else {
         robotState = DRIVING_TO_TUBE;
         if(isAtTube() || hasReachedTube) {
-          operationState = INSERTING_HORIZONTAL_ROD;
+          operationState = TURNING_180_FROM_TUBE;
+          //operationState = INSERTING_HORIZONTAL_ROD;
           isFirstIteration = true;
         }
       }
@@ -589,7 +598,11 @@ void moveArmToPos(int position) {
   armSetpoint = position;
   armInput = getArmPos();
   armPID.Compute();
-  double adjOutput = (armOutput + 255) * 180 / 512;
+  double adjOutput = armOutput / 255;
+  Serial.print("armpos ");
+  Serial.println(getArmPos());
+  Serial.print("armoutput ");
+  Serial.println(armOutput);
   moveArm(adjOutput);
 }
 
@@ -725,5 +738,10 @@ void openGripper() {
 
 void closeGripper() {
   gripper.write(gripperClosed);
+  Serial.println("HERE!!!");
+}
+
+void stopArm() {
+  moveArm(0);
 }
 
