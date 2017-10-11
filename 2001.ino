@@ -236,19 +236,20 @@ void loop() {
       break;
     case GRIPPER_TO_TOP:
       moveArmToPos(armUp);
-      if(getArmPos() == armUp) {
+      if((getArmPos() < (armUp + 20)) && (getArmPos() > (armUp - 20))) {
         gripperInPosition = true;
       }
       break;
     case GRIPPER_TO_BOTTOM:
       moveArmToPos(armDown);
-      if(getArmPos() < armDown+20) {
+      if((getArmPos() < (armDown + 20)) && (getArmPos() > (armDown - 20))) {
         gripperInPosition = true;
+        stopArm();
       }
       break;
     case GRIPPER_TO_MIDPOINT:
       moveArmToPos(armMidGrab);
-      if(getArmPos() == armMidGrab) {
+      if((getArmPos() < (armMidGrab + 20)) && (getArmPos() > (armMidGrab - 20))) {
         gripperInPosition = true;
       }
     case OPENING_GRIPPER:
@@ -341,16 +342,16 @@ void loop() {
     case REMOVING_VERTICAL_ROD:
       if(isFirstIteration) {
        gripperInPosition = false; 
+       hasRod = false;
       }
       if(!gripperInPosition) {
         robotState = GRIPPER_TO_BOTTOM;
         Serial.println(gripperInPosition);
-        if(getArmPos() < armDown + 20 && getArmPos() > armDown - 20) {
+        if((getArmPos() < (armDown + 20)) && (getArmPos() > (armDown - 20))) {
           gripperInPosition = true;
           stopArm();
         }
       } else {
-        gripperInPosition = true;
         if(!hasRod) {
           robotState = CLOSING_GRIPPER;
           delay(500);
@@ -556,9 +557,6 @@ void loop() {
       robotState = STOPPED;
       break;
   }
-
-  Serial.println(robotState);
-  Serial.println(operationState);
 }
 
 void sendHeartbeat() {
@@ -738,7 +736,6 @@ void openGripper() {
 
 void closeGripper() {
   gripper.write(gripperClosed);
-  Serial.println("HERE!!!");
 }
 
 void stopArm() {
