@@ -15,12 +15,12 @@ class BTComms {
     BTComms();
     void setup();
     int getMessageLength();
-    unsigned char getMessageByte(unsigned index);
     unsigned char getMessageChecksum();
+    unsigned char getMessageByte(unsigned index);
     bool read();
     void writeMessage(unsigned char b1, unsigned char b2, unsigned char b3);
    private:
-    enum BTstate {kLookingForStart, kReadingMessageLength, kVerifyChecksum, kVerifyDestination, kReadMessage} BTstate;
+    enum BTstate {kLookingForStart, kReadingMessageLength, kReadMessage, kVerifyChecksum, kVerifyDestination} BTstate;
     unsigned messageLength;
     static const int messageBufferLength = 20;
     unsigned char message[messageBufferLength];

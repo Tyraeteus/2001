@@ -1,13 +1,14 @@
 #include "BTComms.h"
+
 #include "Arduino.h"
 
 /**
  * Bluetooth communications constructor
  */
 BTComms::BTComms() {
-	messageIndex = 0;
-	messageLength = 0;
-	BTstate = kLookingForStart;
+  messageIndex = 0;
+  messageLength = 0;
+  BTstate = kLookingForStart;
 }
 
 /**
@@ -65,14 +66,6 @@ unsigned char BTComms::getMessageByte(unsigned index) {
   return message[index];  
 }
 
-unsigned char BTComms::getMessageChecksum() {
-  unsigned char result;
-  for(int i = 0; i <= messageLength - 2; i++) {
-    result = result + message[i];
-  }
-  return 0xFF - result - messageLength - 1;
-}
-
 /**
  * Read a message from Bluetooth
  * This method reads messages from Bluetooth by looking for the message start byte, then
@@ -86,11 +79,13 @@ bool BTComms::read() {
     unsigned inByte = Serial3.read();
     switch (BTstate) {
       case kLookingForStart:
+        //Serial.println("Looking for Start");
         if (inByte != kMessageStart)
-        	break;
+          break;
         BTstate = kReadingMessageLength;
         break;
       case kReadingMessageLength:
+        //Serial.println("Reading Length");
         messageLength = inByte - 1;
         if (messageLength >= messageBufferLength) {
           Serial.println("Received message length greater than buffer size");
@@ -98,31 +93,43 @@ bool BTComms::read() {
           break;
         }
         messageIndex = 0;
-        Serial.println(messageLength);
         BTstate = kReadMessage;
         break;
       case kReadMessage:
+        //Serial.println("Reading Message");
         message[messageIndex++] = inByte;
         if (messageIndex >= messageLength) {
           BTstate = kVerifyChecksum;
         }
         break;
        case kVerifyChecksum:
-        if(getMessageChecksum() == getMessageByte(messageLength)) {
+        //Serial.println("Verifying Checksum");
+        unsigned char result;
+        unsigned char verificationSum;
+        for(int i = 0; i <= messageLength - 2; i++) {
+          result = result + message[i];
+        }
+        verificationSum = 0xFF - result - messageLength - 1;
+        if(verificationSum == message[messageLength - 1]) {
           BTstate = kVerifyDestination;
+          //Serial.println("Checksum Pass");
         } else {
           BTstate = kLookingForStart;
+          Serial.println("Checksum Fail");
+          //Serial.println(verificationSum);
+          //Serial.println(message[messageLength]);
         }
-        Serial.println("Checksum pass");
         break;
        case kVerifyDestination:
-        if(getMessageByte(4) == 1 || getMessageByte(4) == 0) {
+        //Serial.println("Verifying Destination");
+        if(message[1] == 0x0D || message[1] == 0) {
           BTstate = kLookingForStart;
+          //Serial.println("Destination Pass");
           return true;
         } else {
           BTstate = kLookingForStart;
+          Serial.println("Destination Fail");
         }
-        Serial.println("Destination pass");
         break;
        default:
         Serial.println("Invalid state");
@@ -130,4 +137,5 @@ bool BTComms::read() {
   }
   return false;
 }
+
 

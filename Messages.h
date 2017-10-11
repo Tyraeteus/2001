@@ -29,27 +29,31 @@
  */
 class Messages {
 public:
-	typedef enum {kReserved,
-		kStorageAvailability,
-		kSupplyAvailability,
-		kRadiationAlert,
-		kStopMovement,
-		kResumeMovement,
-		kRobotStatus,
-		kHeartbeat} MessageType;
+  typedef enum {kReserved,
+    kStorageAvailability,
+    kSupplyAvailability,
+    kRadiationAlert,
+    kStopMovement,
+    kResumeMovement,
+    kRobotStatus,
+    kHeartbeat} MessageType;
 
-	Messages();
+  Messages();
 
-	bool isStopped();
-	void sendHeartbeat();
-	bool read();
-	void setup();
-	void printMessage();
+  int checksum();
+  bool isStopped();
+  void sendHeartbeat();
+  void sendLowRadiation();
+  void sendHighRadiation();
+  bool read();
+  void setup();
+  void printMessage();
   int getFirstSupply();
   int getFirstStorage();
 
+
 private:
-	bool stopped;
+  bool stopped;
   byte storageAvailability;
   byte supplyAvailability;
 };
