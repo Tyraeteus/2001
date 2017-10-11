@@ -3,7 +3,6 @@
 #include "Messages.h"
 #include "QTRSensors.h"
 #include "PID_v1.h"
-#include "L3G.h"
 #include "Encoder.h"
 #include "Servo.h"
 
@@ -36,10 +35,6 @@ Encoder leftEnc(leftEncPinA, leftEncPinB);
 Encoder rightEnc(rightEncPinA, rightEncPinB);
 const int countsPerRev = 3200;
 const double wheelCircumfrence = 8.639;
-
-//Gyro
-//SDA is 20 SCL is 21
-L3G gyro;
 
 //Line Sensor
 const int numSensors = 6;
@@ -114,6 +109,7 @@ boolean isLowRadiation = false;
 boolean isHighRadiation = false;
 boolean isSecondIteration = false;
 boolean reGrip = false;
+int calibrationCount = 0;
 
 enum robotState {
   DRIVING_TO_INTERSECTION,
@@ -152,8 +148,6 @@ enum operationState {
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting");
-  Wire.begin();
-  gyro.enableDefault();
   msg.setup();
   linePID.SetOutputLimits(-255, 255);
   distPID.SetOutputLimits(-255, 255);
@@ -164,6 +158,7 @@ void setup() {
   pinMode(rightDriveFow, OUTPUT);
   pinMode(rightDriveRev, OUTPUT);
   gripper.attach(gripperPin, 1000, 2000);
+  pinMode(13, OUTPUT);
   arm.attach(armPin, 1000, 2000);
   robotState = STOPPED;
   operationState = CALIBRATING_LINE_SENSOR;
@@ -171,13 +166,13 @@ void setup() {
 }
 
 void loop() {
-  if(!routesCalculated) {
-    calculateRoutes();
+  if(msg.read()) {
+    if(!routesCalculated) {
+      calculateRoutes();
+      msg.printMessage();
+    }
   }
-
-  gyro.read();
   sendHeartbeat();
-  msg.printMessage();
 
   switch(robotState) {
     case DRIVING_TO_INTERSECTION:
@@ -195,7 +190,7 @@ void loop() {
       }
       break;
     case DRIVING_TO_TUBE:
-      if(isAtTube) {
+      if(isAtTube()) {
         stopRobot();
         hasReachedTube = true;
       } else {
@@ -203,7 +198,7 @@ void loop() {
       }
       break;
     case DRIVING_TO_WALL:
-      if(isAtTube) {
+      if(isAtTube()) {
         stopRobot();
       } else {
         lineFollow(globalSpeed);
@@ -263,11 +258,25 @@ void loop() {
 
   switch(operationState) {
     case CALIBRATING_LINE_SENSOR:
+      if(isFirstIteration) {
+        calibrationCount = 0;
+        openGripper();
+        moveArm(armUp);
+        digitalWrite(13, HIGH);
+      }
+      lineSensor.calibrate();
+      calibrationCount++;
+      if(calibrationCount >= 400) {
+        operationState = DRIVING_TO_REACTOR;
+        isFirstIteration = true;
+        digitalWrite(13, LOW);
+      }
       break;
     case DRIVING_TO_REACTOR:
       if(isFirstIteration) {
         intsCrossed = 0;
         hasTurned = false;
+        hasReachedTube = false;
         clearEncoders();
         isFirstIteration = false;
       }
@@ -287,7 +296,7 @@ void loop() {
             isFirstIteration = true;
           }
         } else {
-          if(isAtTube || hasReachedTube) {
+          if(isAtTube() || hasReachedTube) {
             operationState = INSERTING_VERTICAL_ROD;
             isFirstIteration = true;
           } else {
@@ -441,7 +450,7 @@ void loop() {
             operationState = TURNING_RIGHT_90;
             isFirstIteration = true;
             isSecondIteration = true;
-          } else if(turnFromStorage = 1) {
+          } else if(turnFromStorage == 1) {
             operationState = TURNING_LEFT_90;
             isFirstIteration = true;
             isSecondIteration = true;
@@ -538,6 +547,9 @@ void loop() {
       robotState = STOPPED;
       break;
   }
+
+  Serial.println(robotState);
+  Serial.println(operationState);
 }
 
 void sendHeartbeat() {
