@@ -27,40 +27,56 @@ void Messages::setup() {
   comms.setup();
 }
 
+/*
+ * Method to get the number of the first available supply tube
+ * In this case, we are looking for the first full tube
+ */
 int Messages::getFirstSupply() {
   int count = 0;
   boolean tubeAvailable = false;
   byte mask = B1000;
   byte availableTubes = supplyAvailability;
   while(count < 4 && !tubeAvailable) {
+    //check if first tube is occupied
     if(availableTubes & mask) {
+      //if so, set flag and return the current index, + 1 to help with route calculation
       tubeAvailable = true;
       return count + 1;
+    //otherwise, perform a left shift to move the next index to checking position and advance the index
     } else {
       availableTubes <<= 1;
       count++;
     }
   }
-  if(count == 5 && tubeAvailable == false) {
+  //if no tubes are availible, return an invalid tube
+  if(count == 4 && tubeAvailable == false) {
     return -1;
   }
 }
 
+/*
+ * Method to get the number of the first available storage tube
+ * In this case, we are looking for the first empty tube
+ */
 int Messages::getFirstStorage() {
   int count = 0;
   boolean tubeAvailable = false;
   byte mask = B1000;
   byte availableTubes = storageAvailability;
+  //check if first tube is occupied
   while(count < 4 && !tubeAvailable) {
+    //if not, set flag and return the current index, + 1 to help with route calculation
     if(!(availableTubes & mask)) {
       tubeAvailable = true;
       return count + 1;
+    //otherwise, perform a left shift to move the next index to checking position and advance the index
     } else {
       availableTubes <<= 1;
       count++;
     }
   }
-  if(count == 5 && tubeAvailable == false) {
+  //if no tubes are available, return an invalid tube
+  if(count == 4 && tubeAvailable == false) {
     return -1;
   }
 }
@@ -82,10 +98,16 @@ void Messages::sendHeartbeat() {
   comms.writeMessage(kHeartbeat, 0x0d, 0x00);
 }
 
+/*
+ * Method to send low level radation message
+ */
 void Messages::sendLowRadiation() {
   comms.writeMessage(kRadiationAlert, 0x0d, 0x2C);
 }
 
+/*
+ * MEthod to send high level radation message
+ */
 void Messages::sendHighRadiation() {
   comms.writeMessage(kRadiationAlert, 0x0d, 0xFF);
 }
@@ -120,17 +142,21 @@ void Messages::printMessage() {
 bool Messages::read() {
   if (comms.read()) {
     switch (comms.getMessageByte(0)) {
+    //read storage data
     case kStorageAvailability:
       storageAvailability = comms.getMessageByte(3);
       break;
+    //read supply data
     case kSupplyAvailability:
       supplyAvailability = comms.getMessageByte(3);
       break;
     case kRadiationAlert:
       break;
+    //set "stopped" flag so robot can stop
     case kStopMovement:
       stopped = true;
       break;
+    //reset stopped flag
     case kResumeMovement:
       stopped = false;
       break;

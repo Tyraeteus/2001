@@ -71,7 +71,6 @@ unsigned char BTComms::getMessageByte(unsigned index) {
  * This method reads messages from Bluetooth by looking for the message start byte, then
  * reading the message length and data.
  *
- * You should probably modify this to ignore messages with invalid checksums!
  */
 bool BTComms::read() {
   int runningSum = 0;
@@ -102,17 +101,23 @@ bool BTComms::read() {
           BTstate = kVerifyChecksum;
         }
         break;
+        //Verify checksum of message
        case kVerifyChecksum:
         //Serial.println("Verifying Checksum");
         unsigned char result;
         unsigned char verificationSum;
+        //Sum all the bytes in the message, aside from the checksum itself
         for(int i = 0; i <= messageLength - 2; i++) {
           result = result + message[i];
         }
+        //compute the checksum
         verificationSum = 0xFF - result - messageLength - 1;
+        //verify that the two are equal
         if(verificationSum == message[messageLength - 1]) {
+          //send to next state
           BTstate = kVerifyDestination;
           //Serial.println("Checksum Pass");
+        //Otherwise, toss out the message
         } else {
           BTstate = kLookingForStart;
           Serial.println("Checksum Fail");
@@ -120,12 +125,16 @@ bool BTComms::read() {
           //Serial.println(message[messageLength]);
         }
         break;
+        //Verfify that the message was sent to us
        case kVerifyDestination:
+        //if the destination address is 13 (our team) or 0 (all robots), keep it
         //Serial.println("Verifying Destination");
         if(message[1] == 0x0D || message[1] == 0) {
           BTstate = kLookingForStart;
           //Serial.println("Destination Pass");
+          //notify messages that a message is ready
           return true;
+          //otherwise, toss it out
         } else {
           BTstate = kLookingForStart;
           Serial.println("Destination Fail");
